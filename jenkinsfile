@@ -1,44 +1,77 @@
-def gv
-
 pipeline {
     agent any
-    parameters {
-        choice(name: 'VERSION', choices: ['1.1.0', '1.2.0', '1.3.0'], description: '')
-        booleanParam(name: 'executeTests', defaultValue: true, description: '')
+
+    environment {
+        APP_NAME = 'js-app'
+        MONGO_NETWORK = 'mongo-network'
+        PORT = '3000'
     }
+
     stages {
-        stage("init") {
+
+        stage('Checkout') {
             steps {
-                script {
-                   gv = load "script.groovy" 
-                }
+                echo 'Cloning repository...'
+                checkout scm
             }
         }
-        stage("build") {
+
+        stage('Install Dependencies') {
             steps {
-                script {
-                    gv.buildApp()
-                }
+                echo 'Installing dependencies...'
+                sh 'npm install'
             }
         }
-        stage("test") {
-            when {
-                expression {
-                    params.executeTests
-                }
-            }
+
+        stage('Build Docker Image') {
             steps {
-                script {
-                    gv.testApp()
-                }
+                echo 'Building Docker image...'
+                sh 'docker build -t ${APP_NAME} .'
             }
         }
-        stage("deploy") {
+
+        stage('Stop Old Container') {
             steps {
-                script {
-                    gv.deployApp()
-                }
+                echo 'Stopping old container if running...'
+                sh '''
+                    docker stop ${APP_NAME} || true
+                    docker rm ${APP_NAME} || true
+                '''
             }
         }
-    }   
+
+        stage('Deploy Container') {
+            steps {
+                echo 'Running new container...'
+                sh '''
+                    docker run -d \
+                        --name ${APP_NAME} \
+                        --net ${MONGO_NETWORK} \
+                        -p ${PORT}:${PORT} \
+                        ${APP_NAME}
+                '''
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                echo 'Checking app is running...'
+                sh 'sleep 5 && docker logs ${APP_NAME}'
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully! App is running on port 3000 '
+        }
+        failure {
+            echo 'Pipeline failed! Check the logs above.'
+            sh 'docker logs ${APP_NAME} || true'
+        }
+        always {
+            echo 'Pipeline finished.'
+        }
+    }
 }
