@@ -5,28 +5,22 @@ pipeline {
         APP_NAME = 'js-app'
         MONGO_NETWORK = 'mongo-network'
         PORT = '3000'
+        IMAGE_TAG = "${APP_NAME}:${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                echo 'Cloning repository...'
+                echo "Cloning branch: ${env.BRANCH_NAME}"
                 checkout scm
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                echo 'Installing dependencies...'
-                sh 'npm install'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo 'Building Docker image...'
-                sh 'docker build -t ${APP_NAME} .'
+                echo "Building Docker image: ${IMAGE_TAG}"
+                sh 'docker build -t ${IMAGE_TAG} .'
             }
         }
 
@@ -40,15 +34,22 @@ pipeline {
             }
         }
 
-        stage('Deploy Container') {
+        stage('Deploy') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'master'
+                    branch 'dev'
+                }
+            }
             steps {
-                echo 'Running new container...'
+                echo "Deploying branch: ${env.BRANCH_NAME}"
                 sh '''
                     docker run -d \
                         --name ${APP_NAME} \
                         --net ${MONGO_NETWORK} \
                         -p ${PORT}:${PORT} \
-                        ${APP_NAME}
+                        ${IMAGE_TAG}
                 '''
             }
         }
@@ -64,14 +65,14 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline completed successfully! App is running on port 3000 '
+            echo "✅ Pipeline succeeded on branch: ${env.BRANCH_NAME}"
         }
         failure {
-            echo 'Pipeline failed! Check the logs above.'
+            echo "❌ Pipeline failed on branch: ${env.BRANCH_NAME}"
             sh 'docker logs ${APP_NAME} || true'
         }
         always {
-            echo 'Pipeline finished.'
+            echo "Pipeline finished - Branch: ${env.BRANCH_NAME} Build: ${env.BUILD_NUMBER}"
         }
     }
 }
