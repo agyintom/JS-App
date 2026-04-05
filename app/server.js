@@ -1,11 +1,13 @@
-let express = require('express');
-let path = require('path');
-let fs = require('fs');
-let MongoClient = require('mongodb').MongoClient;
-let bodyParser = require('body-parser');
-let app = express();
+const express = require('express')
+const bodyParser = require('body-parser')
+const path = require('path')
+const fs = require('fs')  
+const { MongoClient } = require('mongodb')  // only once here
 
-app.use(bodyParser.urlencoded({
+const app = express()
+const port = 3000
+
+app.use(express.urlencoded({
   extended: true
 }));
 app.use(bodyParser.json());
