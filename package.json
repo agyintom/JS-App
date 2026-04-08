@@ -16,3 +16,15 @@
     "mongodb": "^7.1.1"
   }
 }
+
+{
+  "name": "js-app",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"No tests yet\" && exit 0"   ← add this
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
